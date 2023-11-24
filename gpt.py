@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-from openai import analyze_player_stats,headtohead
+from openai import analyze_player_stats,headtohead, subdataext
 import json
 import random
 
@@ -35,6 +35,13 @@ gem=response.json()
 #for i in gem:
     #print(i)
 a=gem["content"]
+lin=a['lineup']
+ben=lin['bench']
+arr=ben['benchArr']
+sub=arr[0]
+for i in sub:
+    if i["timeSubbedOn"]!=None and i["timeSubbedOn"]<90:
+        subdataext(i,records)
 #def substitute(dict):
 
 #for i in a:
@@ -108,7 +115,8 @@ b=a["lineup"]
 c=b['lineup']
 x=c.pop()
 y=x['players']
-lineup=y['lineup'][0]
+print(y)
+#lineup=y['lineup'][0]
 #ben1=lineup['bench']
 dataext(y)
 #dataext(ben1)
