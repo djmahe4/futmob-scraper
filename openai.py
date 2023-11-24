@@ -4,6 +4,36 @@ import numpy as np
 import pandas as pd
 import random
 
+def subdataext(dict,records):
+    l=[]
+    x=dict
+    position=x['position']
+                #fpos=x['role']
+    name=x['name']
+    fname=name['fullName']
+    stats=x['stats']
+
+    stats0=stats[:]
+    print(stats0)
+    rstats={}
+    for i in range(len(stats0)):
+        stats00=stats0[i]
+        x=stats00['stats']
+        #print(x)
+        #if x['minutes_played']<=0:
+            #break
+        rstats.update(x)
+                #rstats.update(lstats)
+        y = {}
+        for i in rstats:
+            x=rstats[i]
+            y.update({x['key']:x['value']})
+        l=[position,y]
+                #print(fname)
+                #dict[fname]=l
+                #rec.append(list(dict))
+        records.update({fname:l})
+
 def analyze_player_stats(stats,id):
     file=open(f"{id}/stats.txt","w")
     for i in stats["Player"]:
