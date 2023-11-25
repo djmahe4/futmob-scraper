@@ -9,3 +9,4 @@ leagues.txt -> stores match id and league id , by running data.py
 match.py -> just a test file :)  
 teams.py -> returns standings by taking league id as a parameter  
 stats.json -> saves individual player stats in json file
+openai.py -> contains important definitions used in gpt.py
