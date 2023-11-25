@@ -250,6 +250,8 @@ for stat_name in all_stats:
         continue
     formatted_data[stat_name] = [stats.get(stat_name, 0) for stats in new_rec.values()]
 
+with open("stats.json","w",encoding='utf-8') as file:
+    json.dump(formatted_data,file, ensure_ascii=False)
 # Print the formatted data
 print(formatted_data)
 analyze_player_stats(formatted_data,id)
