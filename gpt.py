@@ -9,6 +9,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from openai import analyze_player_stats,headtohead, subdataext
 import json
 import random
+import seaborn as sns
 
 
 mainstats={}
@@ -29,7 +30,10 @@ headers = {
 params = {
     'matchId': f'{id}',
 }
-
+directory_path = f'{id}'
+# Create the directory if it doesn't exist
+if not os.path.exists(directory_path):
+    os.makedirs(directory_path)
 response = requests.get('https://www.fotmob.com/api/matchDetails', params=params, headers=headers)
 gem=response.json()
 #for i in gem:
@@ -46,11 +50,16 @@ for i in sub:
 
 #for i in a:
     #print(a[i],end="\n\n")
-e1=a['liveticker']
+e1=gem['header']
 extrac=e1["teams"]
+tm1=extrac[0]['name']
+tm2=extrac[1]['name']
+score=[extrac[0]['score'],extrac[1]['score']]
+print(score)
 #extrac=extrac["lineup"][0]
 #print(extrac.keys())
-teamnames=extrac
+teamnames=[tm1,tm2]
+headtohead(id,teamnames,score)
 #extrac=extrac["lineup"][1]
 #teamnames.append(extrac["teamName"])
 print(teamnames)
@@ -70,8 +79,8 @@ with open("impstats.json", 'w') as file:
     ax=list(mainstats.keys())
     for i in range(len(mainstats)):
         j = mainstats[ax[i]]
-        k=j[0]
         #print(j)
+        k=j[0]
         for i in j:
             k=i["key"]
             l=i["stats"]
@@ -79,13 +88,13 @@ with open("impstats.json", 'w') as file:
             x = stz.update({k: l})
     json.dump(stz,file)
 
-def dataext(dict):
-        for i in dict:
+def dataext(dic):
+        for i in dic:
             for x in i:
                 if None:
                     continue
                 l=[]
-                print(x.keys())
+                #print(x.keys())
                 position=x['positionStringShort']
                 #fpos=x['role']
                 name=x['name']
@@ -103,7 +112,8 @@ def dataext(dict):
                 y = {}
                 for i in rstats:
                     x=rstats[i]
-                    y.update({x['key']:x['value']})
+                    y.update({i:x['value']})
+
                 l=[position,y]
                 #print(fname)
                 #dict[fname]=l
@@ -115,7 +125,7 @@ b=a["lineup"]
 c=b['lineup']
 x=c.pop()
 y=x['players']
-print(y)
+#print(y)
 #lineup=y['lineup'][0]
 #ben1=lineup['bench']
 dataext(y)
@@ -139,30 +149,37 @@ dataext(e)
     #records.update({x['title']:x['stats']})
 print(records)
 print(len(records))
-#print(rec)
 new_rec={}
+# Create a color palette
+colors=sns.color_palette("husl", 12)
 for i in records:
     name=i
     pos=records[i][0]
-    dict=records[i][1]
-    rating=dict["rating_title"]
-    x = dict.copy()
-    x.update({"rating_title" : rating})
+    dic=records[i][1]
+    #dic.pop("fantasy_points")
+    try:
+        rating=dic["rating_title"]
+    except KeyError:
+        rating=None
+    x = dic.copy()
+    x.update({"rating" : rating})
     print(x)
     z = []
     y=[]
     print(name)
-    for i in dict:
-        if type(dict[i])==None:
+    ls={}
+    for i in dic:
+        if type(dic[i])==None:
             x.pop(i)
-        elif dict[i]==True or dict[i]==False:
+        elif dic[i]==True or dic[i]==False:
             x.pop(i)
-        elif type(dict[i])==str and "(" in dict[i]:
-            a=dict[i].split("(")
+        elif type(dic[i])==str and "(" in dic[i]:
+            a=dic[i].split("(")
             b=a[1].split("%")
             x[i]=float(b[0])
-        elif type(dict[i])==str:
-            a=float(dict[i])
+            ls.update({i:a[0]})
+        elif type(dic[i])==str:
+            a=float(dic[i])
             a=a
             x[i]=a
     #insights = prompt(name, pos, dict)
@@ -173,12 +190,33 @@ for i in records:
     #print(z)
     #print(len(z), len(y))
     #continue
-
+    real=z.copy()
+    zc=z.copy()
     # Normalize data to fit within the range [0, 1]
-    max_stat = max(z)
-    normalized_stats = [stat / max_stat for stat in z]
+    for i in z:
+        ind = zc.index(i)
+        if i==None:
+            zc.pop(ind)
+            y.pop(ind)
+            real.pop(ind)
+        elif i<=0.1:
+            zc.pop(ind)
+            y.pop(ind)
+            real.pop(ind)
+        elif i<1:
+            zc[ind]=i*100
+        elif i<10:
+            zc[ind]=i*10
+    #min_stat = min(z)
+    color1, color2, color3 = random.sample(colors, 3)
+    max_stat = max(zc)
+    normalized_stats = [(stat- 0) / (max_stat-0) for stat in zc]
 
     # Number of categories
+    for i in y:
+        ind=y.index(i)
+        if i=='FotMob rating':
+            y[ind]='rating'
     num_categories = len(y)
 
     # Step 2: Calculate the angle for each category
@@ -189,38 +227,55 @@ for i in records:
     # Step 4: Create the plot
     fig = plt.figure()
     ax = fig.add_subplot(111, polar=True)
+    #ax.set_ylim(0, 0.8)
 
     # Plot the data
-    ax.plot(angles, normalized_stats, 'o-', linewidth=2, color='#007acc', markersize=8, alpha=0.7)
-    ax.fill(angles, normalized_stats, color='#007acc', alpha=0.3)
+    #color = random.choice(colors)
+    # Create the plot with the new colors
+    ax.plot(angles, normalized_stats, 'o-', linewidth=2, color=color1, markersize=8, alpha=0.7)
+    ax.fill(angles, normalized_stats, color=color1, alpha=0.3)
+
+    #ax.set_aspect("equal")
+    ax.margins(len(y)/30)
 
     # Set category labels on the plot with clear font
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(y, fontsize=10, weight='bold')
+    #colour2=random.choice(colors)
+    ax.set_xticklabels(y,fontsize=6,weight='bold',color=color2, rotation_mode="anchor")
+    #ax.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)  # Make xticks invisible
 
-    # Add lines connecting data points to the center
-    for i in range(num_categories):
-        ax.plot([angles[i], angles[i]], [0, normalized_stats[i]], color='gray', linestyle='dashed', linewidth=1)
 
+    #textbox
+    colour3=random.choice(colors)
+    for i  ,(angle,stat,label) in enumerate (zip(angles,real,y)):
+        x=angle+np.pi/2 if angle <np.pi else angle - np.pi / 2
+        y=normalized_stats[i] +0.355
+        # Check if stat is an integer
+        if type(stat)==int:
+            text = f"{int(stat)}"
+        else:
+            text = f"{float(stat)}"
+        ax.text(angle, y, text, fontsize=8, ha='center', va='center', color=color3,
+                bbox=dict(boxstyle='square', facecolor='white'))
     # Set radial gridlines
-    ax.set_yticklabels([])
-    ax.set_rlabel_position(0)
+    #ax.set_yticklabels([])
+    #ax.set_rlabel_position(0)
 
-    # Add labels to data points with a bit of offset
-    label_offset = 0.1
-    for i in range(num_categories):
-        angle_rad = angles[i]
-        x = angle_rad + np.pi / 2 if angle_rad < np.pi else angle_rad - np.pi / 2
-        y = normalized_stats[i] + label_offset
-        ax.text(angle_rad, normalized_stats[i] + random.uniform(0.30,0.50), f'{z[i]:.2f}', fontsize=8, ha='center', va='center')
+
+
+    # Add watermark with Twitter handle
+    plt.text(-0.05, -0.05, '@DJMahe04', fontsize=12, ha='center', va='center', alpha=0.2, transform=ax.transAxes)
+
+    # Create a string with the keys and values from 'ls'
+    ls_text = "\n".join(f"{k}: {v}" for k, v in ls.items())
+
+    # Add the text box to the plot
+    ax.text(1.2, 0.25, ls_text, transform=ax.transAxes, fontsize=10,
+            verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.4))
 
     # Step 6: Display the plot
     #plt.legend()
-    plt.title(f'Player Performance {name}', size=16, weight='bold', color='#333333')
-    directory_path = f'{id}'
-    # Create the directory if it doesn't exist
-    if not os.path.exists(directory_path):
-        os.makedirs(directory_path)
+    plt.title(f'Player Performance {name} ({pos})', size=16, weight='bold', color='#333333')
     new_jpg_path = os.path.join(directory_path, f'{name}.jpg')
 
     # Export the radar chart as a JPEG image
@@ -232,6 +287,7 @@ for i in records:
     if os.path.exists(file_to_delete):
         # Delete the file
         os.remove(file_to_delete)
+    #break
 print(new_rec)
 # Extracting keys (players) and values (player stats) from the given data
 players = list(new_rec.keys())
@@ -246,13 +302,12 @@ all_stats = set(stat for stats in new_rec.values() for stat in stats)
 
 # Iterate through stats and add them to formatted_data
 for stat_name in all_stats:
-    if all(stat_name not in stats or stats[stat_name] == 0 for stats in new_rec.values()):
-        continue
+    #if all(stat_name not in stats or stats[stat_name] == 0 for stats in new_rec.values()):
+        #continue
     formatted_data[stat_name] = [stats.get(stat_name, 0) for stats in new_rec.values()]
 
+# Print the formatted data
 with open("stats.json","w",encoding='utf-8') as file:
     json.dump(formatted_data,file, ensure_ascii=False)
-# Print the formatted data
 print(formatted_data)
 analyze_player_stats(formatted_data,id)
-headtohead(id,teamnames)
